@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="../canvas-listener.js"></script>
+</head>
+
+<body>
+    <h1>This is a demo for canvas-listener</h1>
+    <canvas width="300px" height="300px" id="my-canvas" style="background-color: white;"></canvas>
+    <script>
+        let canvas = document.getElementById('my-canvas');
+        let listener = new CanvasListener(canvas);
+        let ctx = canvas.getContext('2d');
+        ctx.textBaseline = "hanging";
+
+        let canvasOriginX = 0;
+        let canvasOriginY = 0;
+
+        let canvasScale = 1;
+
+        function Rect(){
+            this.x = 0;
+            this.y = 0;
+            this.w = 0;
+            this.h = 0;
+        }
+
+        function getTransformedRect(rect){
+            let transformed = new Rect();
+            transformed.x = rect.x * canvasScale + canvasOriginX;
+            transformed.y = rect.y * canvasScale + canvasOriginY;
+            transformed.w = rect.w * canvasScale;
+            transformed.h = rect.h * canvasScale;
+
+            return transformed;
+        }
+
+        let moveLable = {
+            x: 0,
+            y: 0,
+            text: "",
+            visible : false,
+        };
+
+        let dragBox = {
+            rect : new Rect(),
+            text: "drag",
+            isDragging: false
+        }
+        dragBox.rect.x = 0;
+        dragBox.rect.y = 0;
+        dragBox.rect.w = 80;
+        dragBox.rect.h = 80;
+
+        function Cricle(){
+            this.x = 0;
+            this.y = 0;
+            this.radius = 0;
+        }
+
+        let pointerOutCircle = new Cricle();
+        let pointerEnterCirlce = new Cricle();
+        let pinchCircle = new Cricle();
+
+        listener.onpointermove = (event) => {
+            moveLable.x = event.x;
+            moveLable.y = event.y;
+
+            moveLable.text = `  x : ${parseInt(moveLable.x)} y : ${parseInt(moveLable.y)}`;
+        }
+
+        listener.onpointerdown = (event) => {
+            let transformedDragBoxRect = getTransformedRect(dragBox.rect);
+            if (
+                event.x > transformedDragBoxRect.x && event.x < transformedDragBoxRect.x  + transformedDragBoxRect.w &&
+                event.y > transformedDragBoxRect.y && event.y < transformedDragBoxRect.y + transformedDragBoxRect.h) 
+            {
+                dragBox.isDragging = true;
+            }
+        }
+
+        listener.onpointerup = (event)=>{
+            dragBox.isDragging = false;
+            pinchCircle.radius = 0;
+        }
+
+        listener.onpointerdrag = (event) => {
+            let deltaX = event.x - event.prevX;
+            let deltaY = event.y - event.prevY;
+            if (dragBox.isDragging) {
+                dragBox.rect.x += deltaX / canvasScale;
+                dragBox.rect.y += deltaY / canvasScale;
+            }
+        }
+
+        listener.onpointerenter = (event)=>{
+            pointerEnterCirlce.radius = 70;
+            pointerEnterCirlce.x = event.x;
+            pointerEnterCirlce.y = event.y;
+        }
+
+        listener.onpointerout = (event)=>{
+            pointerOutCircle.radius = 70;
+            pointerOutCircle.x = event.x;
+            pointerOutCircle.y = event.y;
+            pinchCircle.radius = 0;
+        }
+
+        const zoomFunction = (x, y, zoom)=>{
+            let prevScale = canvasScale;
+            let prevOriginX = canvasOriginX;
+            let prevOriginY = canvasOriginY;
+
+            canvasScale *= zoom ;
+            if(canvasScale < 0.1){
+                canvasScale = 0.1;
+            }
+
+            console.log(canvasScale);
+
+            canvasOriginX = (-x + prevOriginX) * canvasScale / prevScale + x;
+            canvasOriginY = (-y + prevOriginY) * canvasScale / prevScale + y;
+        }
+
+        listener.onpinch = (event)=>{
+            pinchCircle.radius = event.pinchSize * 0.5;
+            pinchCircle.x = event.pinchX;
+            pinchCircle.y = event.pinchY;
+
+            zoomFunction(event.pinchX, event.pinchY, event.pinchSize/event.prevPinchSize )
+        }
+
+        listener.onwheel = (event)=>{
+            zoomFunction(event.x, event.y, 1.0-event.wheelDelta * 0.001)
+        }
+
+        let prevTimeStamp = performance.now();
+        function step(timeStamp) {
+            clearCanvas('#FFEDF8')
+            let delta = timeStamp - prevTimeStamp; //in milliseconds
+            prevTimeStamp = timeStamp;
+
+            //draw pointer enter circle
+            drawCirlce(pointerEnterCirlce.x, pointerEnterCirlce.y, pointerEnterCirlce.radius, 'rgba(255,0,0,0.1)');
+            pointerEnterCirlce.radius = lerp(pointerEnterCirlce.radius, 0, delta *0.01)
+
+            //draw pointer out circle
+            drawCirlce(pointerOutCircle.x, pointerOutCircle.y, pointerOutCircle.radius, 'rgba(0,0,255,0.1)');
+            pointerOutCircle.radius = lerp(pointerOutCircle.radius, 0, delta *0.01)
+
+            //draw dragBox
+            
+            let tempTransform = ctx.getTransform();
+            ctx.resetTransform();
+            ctx.translate(canvasOriginX, canvasOriginY);
+            ctx.scale(canvasScale, canvasScale);
+            ctx.fillStyle = 'powderblue';
+            ctx.fillRect(dragBox.rect.x, dragBox.rect.y, dragBox.rect.w, dragBox.rect.h);
+            ctx.fillStyle = 'black';
+            ctx.fillText('drag', dragBox.rect.x, dragBox.rect.y);
+            ctx.setTransform(tempTransform);
+
+            //draw moveLabel
+            ctx.fillStyle = 'black';
+            ctx.fillText(moveLable.text, moveLable.x, moveLable.y);
+
+            //draw pinch circle
+            drawCirlce(pinchCircle.x, pinchCircle.y, pinchCircle.radius, 'rgba(0,0,0,1)');
+
+            requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+
+        function clearCanvas(color) {
+            let transform = ctx.getTransform();
+            ctx.fillStyle = color;
+            ctx.resetTransform();
+            ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight)
+            ctx.setTransform(transform);
+        }
+
+        function drawCirlce(x, y, radius, strokeColor){
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2.0);
+            ctx.lineWidth  = 3
+            ctx.strokeStyle = strokeColor;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function lerp(a, b ,t){
+            if(t > 1) {t = 1;}
+            if(t < 0) {t = 0;}
+            return a + (b - a) * t;
+        }
+    </script>
+    
+</body>
+
