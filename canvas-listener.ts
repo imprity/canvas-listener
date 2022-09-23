@@ -134,8 +134,8 @@ class CanvasListener{
         }
 
         const onTouch = (event: TouchEvent, singleTouchHandler : Function) => {
-            event.preventDefault();
             if(event.touches && event.touches.length >= 2) {
+                event.preventDefault();
                 let canvasRect = this.canvas.getBoundingClientRect();
                 let cx1 = event.touches[0].clientX - canvasRect.x;
                 let cy1 = event.touches[0].clientY - canvasRect.y;
@@ -186,7 +186,10 @@ class CanvasListener{
                 onPointerEnter(e);
             })
         })
-        canvas.addEventListener('touchmove', event => { onTouch(event, onPointerMove) })
+        canvas.addEventListener('touchmove', event => { onTouch(event, (e=>{
+            e.preventDefault();
+            onPointerMove(e);
+        })) })
         canvas.addEventListener('touchend', (event) => { onTouch(event, (e=>{
             onPointerUp(e);
             onPointerOut(e);

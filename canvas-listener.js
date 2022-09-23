@@ -111,8 +111,8 @@ var CanvasListener = /** @class */ (function () {
             _this.onenvent(parsedEvent);
         };
         var onTouch = function (event, singleTouchHandler) {
-            event.preventDefault();
             if (event.touches && event.touches.length >= 2) {
+                event.preventDefault();
                 var canvasRect = _this.canvas.getBoundingClientRect();
                 var cx1 = event.touches[0].clientX - canvasRect.x;
                 var cy1 = event.touches[0].clientY - canvasRect.y;
@@ -153,7 +153,12 @@ var CanvasListener = /** @class */ (function () {
                 onPointerEnter(e);
             });
         });
-        canvas.addEventListener('touchmove', function (event) { onTouch(event, onPointerMove); });
+        canvas.addEventListener('touchmove', function (event) {
+            onTouch(event, (function (e) {
+                e.preventDefault();
+                onPointerMove(e);
+            }));
+        });
         canvas.addEventListener('touchend', function (event) {
             onTouch(event, (function (e) {
                 onPointerUp(e);
