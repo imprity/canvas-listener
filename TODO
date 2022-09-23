@@ -1,0 +1,2 @@
+add listener.addEventListener('eventname', (event)=>{}) stuff
+maybe add hold and double click stuffs
